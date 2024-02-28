@@ -1,0 +1,49 @@
+{
+  "username": "example_user",
+  "password": "secure_password",
+  "first_name": "John",
+  "middle_name": "Doe",
+  "last_name": "Smith",
+  "email": "john.doe@example.com",
+  "phone_number": "1234567890",
+  "profile_img": "/path/to/profile/image",
+  "course": {
+    "college": {
+      "college_name": "College of Computing and Information Sciences",
+      "college_abbr": "CCIS"
+    },
+    "course_name": "Bachelor of Science in Computer Science",
+    "course_abbr": "BSCS"
+  }
+}
+
+{
+  "username": "example_user",
+  "password": "secure_password",
+  "first_name": "John",
+  "middle_name": "Doe",
+  "last_name": "Smith",
+  "email": "john.doe@example.com",
+  "phone_number": "1234567890",
+  "profile_img": "/path/to/profile/image"
+}
+
+login-template
+{
+  "username": "emz_username",
+  "password": "emz_password"
+}
+
+{
+    "title": "48 Laws of Power",
+    "subtitle": "power",
+    "isbn": "978-3-16-148410-0",
+    "publisher": "Example Publisher",
+    "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+    "status_book": "upload processing",
+    "availability": true,
+    "price": "29.99",
+    "upload_status": true,
+    "author": null,
+    "genre": null
+}
