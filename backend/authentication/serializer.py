@@ -1,6 +1,11 @@
 # serializers.py
 from rest_framework import serializers
-from .models import User, College, Course
+from .models import User, College, Course, Misc 
+
+class MiscSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Misc
+        fields = '__all__'
 
 class CollegeSerializer(serializers.ModelSerializer):
     class Meta:

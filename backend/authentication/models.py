@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
+from book_management.models import *
 
 class UserManager(BaseUserManager):
     def create_user(self, username, password=None, **extra_fields):
@@ -30,8 +31,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(max_length=20)
     profile_img = models.ImageField(upload_to='profile', blank=True, null=True)
     course = models.ForeignKey(Course, on_delete=models.DO_NOTHING, null=True, blank=True)
-
+    
     objects = UserManager()
 
     USERNAME_FIELD = 'username'
 
+class Misc(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    genre_pref = models.CharField(max_length=255)
+    author_pref = models.CharField(max_length=255)

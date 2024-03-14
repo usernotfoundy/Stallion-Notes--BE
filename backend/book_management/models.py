@@ -18,7 +18,7 @@ class Book(models.Model):
     isbn = models.CharField(max_length=255)
     publisher = models.CharField(max_length=255)
     description = models.TextField()
-    status_book = models.CharField(max_length=50) #upload processing
+    status_book = models.CharField(max_length=50, default='pending') #upload processing
     # availability = models.BooleanField()
     price = models.DecimalField(max_digits=6, decimal_places=2)
     # upload_status = models.BooleanField()

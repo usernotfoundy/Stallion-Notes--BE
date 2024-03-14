@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'authentication',
     'book_management',
     'cart_management',
+    'post_management',
 ]
 
 MIDDLEWARE = [
