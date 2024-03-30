@@ -32,7 +32,7 @@ urlpatterns = [
     path('register/', RegistrationAPIView.as_view(), name='register'),
     path('login/', LoginAPIView.as_view(), name='login'),
     path('update-user/', UpdateUserAPIView.as_view(), name='update-user'),
-    path('test-header/', TestHeaderAPI.as_view(), name='test-header'),
+    path('view-profile/', ViewProfileAPIView.as_view(), name='view-profile'),
 
     # College & Course APIs
     path('create-college/', CollegeCreateView.as_view(), name='create-college'),
@@ -43,6 +43,8 @@ urlpatterns = [
     # Book Management APIs
     path('view-books/', BookAPIView.as_view(), name='view-books'),
     path('create-book/', BookCreateView.as_view(), name='create-book'),
+    path('update-book/', BookUpdateAPIView.as_view(), name='update-book'),
+    path('delete-book/', BookDeleteAPIView.as_view(), name='delete-book'),
     path('search-book/', BookSearchAPIView.as_view(), name='search-book'),
     path('get-genre/', GetGenreAPIView.as_view(), name='get-genre'),
 

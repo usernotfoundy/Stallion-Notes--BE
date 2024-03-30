@@ -13,6 +13,7 @@ from .serializer import *
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import IsAuthenticated
+from django.conf import settings
 
 
 class TokenAuthentication(BaseAuthentication):
@@ -75,6 +76,40 @@ class LoginAPIView(ObtainAuthToken):
             }
             return Response(payload, status=status.HTTP_401_UNAUTHORIZED)
     
+class ViewProfileAPIView(generics.ListAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserSerializer
+
+    def get_queryset(self):
+        # Retrieve the authenticated user
+        user = self.request.user
+        # Return a queryset containing only the authenticated user
+        return User.objects.filter(pk=user.pk)
+
+    def get(self, request, *args, **kwargs):
+        # Retrieve the queryset containing the authenticated user
+        queryset = self.get_queryset()
+        # Serialize the user instance
+        serializer = self.serializer_class(queryset, many=True)
+        # Return the serialized user
+
+        user_data = serializer.data[0]
+        profile_img_url = None
+        if user_data["profile_img"]:
+            profile_img_url = request.build_absolute_uri(settings.MEDIA_URL + str(user_data["profile_img"]))
+
+        payload = {
+            "username": user_data["username"],
+            "first_name": user_data["first_name"],
+            "middle_name": user_data["middle_name"],
+            "last_name": user_data["last_name"],
+            "email": user_data["email"],
+            "profile_img": profile_img_url,
+            "phone_number": user_data["phone_number"],
+        }
+        return Response(payload, status=status.HTTP_200_OK)
+    
 class UpdateUserAPIView(generics.UpdateAPIView):
     authentication_classes = [TokenAuthentication]  # Specify authentication classes
     permission_classes = [permissions.IsAuthenticated]  # Specify permission classes
@@ -110,8 +145,8 @@ class UpdateUserAPIView(generics.UpdateAPIView):
             "Middle Name": updated_user.middle_name,  # Get the updated middle name
             "Last Name": updated_user.last_name,  # Get the updated last name
             "Email": updated_user.email,  # Get the updated email
-            "College": updated_user.course.college.college_name,  # Get the college name associated with the user's course
-            "Course": updated_user.course.course_name  # Get the course name associated with the user
+            # "College": updated_user.course.college.college_name,  # Get the college name associated with the user's course
+            # "Course": updated_user.course.course_name  # Get the course name associated with the user
         }
         
         # Return the payload in the response with status 200 OK
@@ -202,10 +237,3 @@ class CourseView(generics.ListAPIView):
             payload.append(course_info)
 
         return Response(payload, status=status.HTTP_200_OK)
-       
-class TestHeaderAPI(APIView):
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        return Response({'message': 'Token received'}, status=status.HTTP_200_OK)

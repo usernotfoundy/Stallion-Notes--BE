@@ -1,11 +1,6 @@
 # serializers.py
 from rest_framework import serializers
-from .models import User, College, Course, Misc 
-
-class MiscSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Misc
-        fields = '__all__'
+from .models import User, College, Course
 
 class CollegeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -25,17 +20,16 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'password', 'first_name', 'last_name', 'email', 'phone_number', 'course']
-        extra_kwargs = {'password': {'write_only': True}, 'course': {'required': False}}
+        fields = ['username', 'password', 'first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'profile_img', 'course']
+        extra_kwargs = {'password': {'write_only': True, 'required': False}, 'course': {'required': False}}
 
     def create(self, validated_data):
-        middle_name = validated_data.get('middle_name', '')
         course_data = validated_data.pop('course', None)
 
         user = User.objects.create(
             username=validated_data['username'],
             first_name=validated_data.get('first_name', ''),
-            middle_name=middle_name,
+            middle_name = validated_data.get('middle_name', ''),
             last_name=validated_data.get('last_name', ''),
             email=validated_data.get('email', ''),
             phone_number=validated_data.get('phone_number', ''),
