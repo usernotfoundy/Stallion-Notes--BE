@@ -28,7 +28,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=255)
     email = models.EmailField()
     phone_number = models.CharField(max_length=20)
-    profile_img = models.ImageField(upload_to='rest_framework/img/profile', blank=True, null=True)
+    profile_img = models.ImageField(upload_to='profile', blank=True, null=True)
     course = models.ForeignKey(Course, on_delete=models.DO_NOTHING, null=True, blank=True)
     
     objects = UserManager()

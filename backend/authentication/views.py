@@ -97,7 +97,7 @@ class ViewProfileAPIView(generics.ListAPIView):
         user_data = serializer.data[0]
         profile_img_url = None
         if user_data["profile_img"]:
-            profile_img_url = request.build_absolute_uri(settings.MEDIA_URL + str(user_data["profile_img"]))
+            profile_img_url = request.build_absolute_uri(user_data["profile_img"])
 
         payload = {
             "username": user_data["username"],
@@ -203,20 +203,22 @@ class CourseCreateView(generics.CreateAPIView):
     serializer_class = CourseSerializer
 
 class CollegeView(generics.ListAPIView):
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [permissions.IsAuthenticated]
+    # authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.AllowAny]
 
     serializer_class = CollegeSerializer
     queryset = College.objects.all()
+
     
 class CourseView(generics.ListAPIView):
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [permissions.IsAuthenticated]
+    # authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.AllowAny]
 
     serializer_class = CourseSerializer
 
     def get_queryset(self):
-        college_id = self.request.data.get('college')
+        college_id = self.request.query_params.get('college')
+        # print(college_id)
         if college_id:
             return Course.objects.filter(college_id=college_id)
         else:
@@ -230,10 +232,13 @@ class CourseView(generics.ListAPIView):
             college_id = course_data['college'] 
             college = College.objects.get(id=college_id)
             course_info = {
+                'id': course_data['id'],
                 'College': college.college_name,
                 'Course': course_data['course_name'],
                 'Abbrevation': course_data['course_abbr']
             }
             payload.append(course_info)
+
+        # print(payload)
 
         return Response(payload, status=status.HTTP_200_OK)

@@ -1,4 +1,3 @@
-# serializers.py
 from rest_framework import serializers
 from .models import User, College, Course
 
@@ -21,7 +20,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['username', 'password', 'first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'profile_img', 'course']
-        extra_kwargs = {'password': {'write_only': True, 'required': False}, 'course': {'required': False}}
+        extra_kwargs = {'password': {'write_only': True, 'required': False}, 'course': {'required': False}, 'profile_img': {'required': False}}
 
     def create(self, validated_data):
         course_data = validated_data.pop('course', None)
@@ -34,9 +33,9 @@ class UserSerializer(serializers.ModelSerializer):
             email=validated_data.get('email', ''),
             phone_number=validated_data.get('phone_number', ''),
             profile_img=validated_data.get('profile_img', ''),
+            course=course_data,
         )
         user.set_password(validated_data['password'])
         user.save()
 
         return user
-

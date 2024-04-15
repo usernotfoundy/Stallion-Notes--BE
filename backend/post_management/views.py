@@ -20,36 +20,73 @@ from authentication.models import *
 from book_management.models import *
 from book_management.serializer import *
 from book_management.views import *
-from authentication.serializer import MiscSerializer
+# from authentication.serializer import MiscSerializer
 
 class PostAPIView(generics.ListAPIView):
     authentication_classes = [TokenAuthentication]  
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = BookSerializer
 
-    def posts_view(request):
-        approved_posts = Book.objects.filter(status_book='approved')
+    def list(self, request, *args, **kwargs):
+        # Retrieve all book posts
+        book_posts = Book.objects.all()
 
-class PostManagement(generics.ListAPIView):
-    authentication_classes = [TokenAuthentication]  
-    permission_classes = [permissions.IsAuthenticated]
-    serializer_class = MiscSerializer
+        # Initialize an empty list to store the payload
+        payload = []
 
-    def get_queryset(self):
-        # Get the authenticated user
-        user = self.request.user
+        # Iterate over each book post
+        for book_post in book_posts:
+            # Construct the URL for the book image
+            book_img_url = None
+            if book_post.book_img:
+                book_img_url = request.build_absolute_uri(book_post.book_img.url)
+
+            # Construct the URL for the user's image
+            user_img_url = None
+            if book_post.user.profile_img:
+                user_img_url = request.build_absolute_uri(book_post.user.profile_img.url)
+
+            # Create a dictionary for the book post payload
+            post_data = {
+                'id': book_post.id,
+                'title': book_post.title,
+                'created_at': book_post.created_at,
+                'book_img_url': book_img_url,
+                'user': {
+                    'username': book_post.user.username,
+                    # 'email': book_post.user.email,
+                    'profile_img_url': user_img_url,  # Include user's profile image URL
+                    # Add other user-related fields as needed
+                }
+                # Add other book-related fields as needed
+            }
+
+            # Append the book post dictionary to the payload list
+            payload.append(post_data)
+
+        # Return the payload as a JSON response
+        return Response(payload, status=status.HTTP_200_OK)
+    
+# class PostManagement(generics.ListAPIView):
+#     authentication_classes = [TokenAuthentication]  
+#     permission_classes = [permissions.IsAuthenticated]
+#     serializer_class = MiscSerializer
+
+#     def get_queryset(self):
+#         # Get the authenticated user
+#         user = self.request.user
         
-        # Get the genre_pref field for the user from the Misc table
-        misc_object = Misc.objects.filter(user=user).first()
-        if misc_object:
-            genre_pref = misc_object.genre_pref
-            if genre_pref:
-                # Split the genre_pref string by comma and store them in a list
-                genre_list = genre_pref.split(',')
-                return genre_list
+#         # Get the genre_pref field for the user from the Misc table
+#         misc_object = Misc.objects.filter(user=user).first()
+#         if misc_object:
+#             genre_pref = misc_object.genre_pref
+#             if genre_pref:
+#                 # Split the genre_pref string by comma and store them in a list
+#                 genre_list = genre_pref.split(',')
+#                 return genre_list
         
-        # If no genre_pref is found for the user or it's empty, return an empty queryset
-        return []
+#         # If no genre_pref is found for the user or it's empty, return an empty queryset
+#         return []
 
 class BookSearchAPIView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]

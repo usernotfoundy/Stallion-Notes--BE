@@ -18,7 +18,7 @@ class Book(models.Model):
     isbn = models.CharField(max_length=255)
     publisher = models.CharField(max_length=255)
     description = models.TextField()
-    status_book = models.CharField(max_length=50, default='pending') #upload processing
+    status_book = models.CharField(max_length=50) #upload processing
     # availability = models.BooleanField()
     price = models.DecimalField(max_digits=6, decimal_places=2)
     # upload_status = models.BooleanField()
@@ -26,3 +26,4 @@ class Book(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     author = models.ForeignKey(Author, on_delete=models.DO_NOTHING, null=True, blank=True)
     genre = models.ForeignKey(Genre, on_delete=models.DO_NOTHING, null=True, blank=True)
+    book_img = models.ImageField(upload_to='books', blank=True, null=True)

@@ -19,6 +19,7 @@ from django.urls import path, include, re_path
 from authentication.views import *
 from book_management.views import *
 from cart_management.views import *
+from post_management.views import *
 
 # for handling static files
 from django.conf import settings
@@ -44,13 +45,16 @@ urlpatterns = [
     path('view-books/', BookAPIView.as_view(), name='view-books'),
     path('create-book/', BookCreateView.as_view(), name='create-book'),
     path('update-book/', BookUpdateAPIView.as_view(), name='update-book'),
-    path('delete-book/', BookDeleteAPIView.as_view(), name='delete-book'),
+    path('delete-book/<int:pk>/', BookDeleteAPIView.as_view(), name='delete-book'),
     path('search-book/', BookSearchAPIView.as_view(), name='search-book'),
     path('get-genre/', GetGenreAPIView.as_view(), name='get-genre'),
 
     # Cart Management APIs
     path('add-cart/', AddCartAPIView.as_view(), name='add-cart'),
     path('view-cart/', CartViewAPIView.as_view(), name='view-cart'),
+
+    # Post Management APIs
+    path('view-posts/', PostAPIView.as_view(), name='view-posts'),
 ]
 
 # Serve media files during development

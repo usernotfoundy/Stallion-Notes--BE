@@ -17,6 +17,7 @@ from authentication.views import TokenAuthentication
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from django.conf import settings
+from django.http import Http404
 
 class BookAPIView(generics.ListAPIView):
     authentication_classes = [TokenAuthentication]
@@ -40,13 +41,15 @@ class BookAPIView(generics.ListAPIView):
         for book_data in serializer.data:
             book_img_url = None
             if book_data["book_img"]:
-                book_img_url = request.build_absolute_uri(settings.MEDIA_URL + str(book_data["book_img"]))
+                book_img_url = request.build_absolute_uri(book_data["book_img"])
 
             # Construct book info dictionary including the book image URL
             book_info = {
+                'id': book_data['id'],
                 'title': book_data['title'],
                 'author': book_data['author'],
                 'description': book_data['description'],
+                'price': book_data['price'],
                 'genre': book_data['genre'],
                 'img': book_img_url,
                 # Add other fields as needed
@@ -143,6 +146,10 @@ class BookUpdateAPIView(generics.UpdateAPIView):
         # Extract updated fields from the serializer
         updated_data = serializer.validated_data
 
+        book_img_url = None
+        if updated_data["book_img"]:
+            book_img_url = request.build_absolute_uri(updated_data["book_img"])
+
         # Construct the payload with updated book information
         payload = {
             "message": "Book updated successfully",
@@ -153,7 +160,7 @@ class BookUpdateAPIView(generics.UpdateAPIView):
                 "author": updated_data.get('author'),
                 "description": updated_data.get('description'),
                 "genre": updated_data.get('genre'),
-                "book_img": updated_data.get('book_img'),
+                "book_img": book_img_url,
             }
         }
 
@@ -165,20 +172,20 @@ class BookDeleteAPIView(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated]
     queryset = Book.objects.all()
 
-    def delete(self, request, *args, **kwargs):
-        # Extract the ID from the request data
-        book_id = request.data.get('id')
-
-        # Check if the ID is provided in the request data
-        if not book_id:
-            return Response("Book ID not provided in request body", status=status.HTTP_400_BAD_REQUEST)
-
+    def get_object(self):
+        # Extract the book ID from the URL kwargs
+        book_id = self.kwargs.get('pk')
         try:
-            # Fetch the book object based on the provided ID
+            # Retrieve the book object based on the ID
             book = Book.objects.get(pk=book_id)
+            return book
         except Book.DoesNotExist:
-            # If the book does not exist, return a 404 error
-            return Response("Book not found", status=status.HTTP_404_NOT_FOUND)
+            # If the book does not exist, raise a 404 Not Found exception
+            raise Http404("Book does not exist")
+
+    def delete(self, request, *args, **kwargs):
+        # Retrieve the book object using the get_object method
+        book = self.get_object()
 
         # Perform the deletion
         book.delete()
