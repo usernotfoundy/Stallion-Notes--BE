@@ -27,3 +27,8 @@ class Book(models.Model):
     author = models.ForeignKey(Author, on_delete=models.DO_NOTHING, null=True, blank=True)
     genre = models.ForeignKey(Genre, on_delete=models.DO_NOTHING, null=True, blank=True)
     book_img = models.ImageField(upload_to='books', blank=True, null=True)
+    wishlist = models.BigIntegerField(default=0)
+
+class MyWishlist(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    book = models.ForeignKey(Book, on_delete=models.CASCADE)

@@ -10,7 +10,7 @@ class AuthorSerializer(serializers.ModelSerializer):
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:
         model = Genre
-        fields = ['genre_name']
+        fields = '__all__'
 
 class BookSerializer(serializers.ModelSerializer):
     author = AuthorSerializer(required=False)
@@ -20,7 +20,7 @@ class BookSerializer(serializers.ModelSerializer):
     class Meta:
          model = Book
          fields = ['id', 'user', 'title', 'subtitle', 'isbn', 'publisher', 'description',
-                   'status_book', 'price', 'author', 'genre', 'book_img']
+                   'status_book', 'price', 'author', 'genre', 'book_img', 'wishlist',]
          extra_kwargs = {'author': {'allow_null': True, 'required': False},
                          'genre': {'allow_null': True, 'required': False},
                          'description': {'allow_null': True, 'required': False},
@@ -29,3 +29,11 @@ class BookSerializer(serializers.ModelSerializer):
                          'isbn': {'allow_null': True, 'required': False},
                          'price': {'allow_null': True, 'required': False},
                          'publisher': {'allow_null': True, 'required': False}}
+         
+class MyWishlistSerializer(serializers.ModelSerializer):
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    book = serializers.PrimaryKeyRelatedField(queryset=Book.objects.all())
+
+    class Meta:
+        model = MyWishlist
+        fields = '__all__'

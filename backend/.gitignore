@@ -3,3 +3,4 @@ db.sqlite3
 config.py
 static
 media
+__pycache__

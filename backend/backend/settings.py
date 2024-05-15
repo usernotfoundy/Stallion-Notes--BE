@@ -27,7 +27,7 @@ SECRET_KEY = SECRET_KEY
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', 'usernotfoundy.pythonanywhere.com', 'tisap.pythonanywhere.com', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', 'usernotfoundy.pythonanywhere.com', 'tisap.pythonanywhere.com', '127.0.0.1', '192.168.1.24']
 
 
 # Application definition
@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     'book_management',
     'cart_management',
     'post_management',
+    'rating_management',
+    'purchase_management',
 ]
 
 MIDDLEWARE = [

@@ -43,6 +43,13 @@ class BookAPIView(generics.ListAPIView):
             if book_data["book_img"]:
                 book_img_url = request.build_absolute_uri(book_data["book_img"])
 
+            #Genre is accessed in OrdereDict
+            genre_dict = book_data['genre']
+            if genre_dict:
+                genre = genre_dict['genre_name']
+            else:
+                genre = "null"
+
             # Construct book info dictionary including the book image URL
             book_info = {
                 'id': book_data['id'],
@@ -50,7 +57,7 @@ class BookAPIView(generics.ListAPIView):
                 'author': book_data['author'],
                 'description': book_data['description'],
                 'price': book_data['price'],
-                'genre': book_data['genre'],
+                'genre': genre,
                 'img': book_img_url,
                 # Add other fields as needed
             }
@@ -67,7 +74,7 @@ class BookCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         # Set the user field of the book instance to the logged-in user
-        serializer.save(user=self.request.user)
+        serializer.save(user=self.request.user)     
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -76,10 +83,13 @@ class BookCreateView(generics.CreateAPIView):
 
         # Get the created book instance
         created_book = serializer.instance
+        genre_id = self.request.data.get('genre')
+        genre = Genre.objects.get(id=genre_id)
 
         # Construct the payload with the created book ID and a success message
         payload = {
             "message": "Book created successfully",
+            "genre": genre.genre_name,
             "id": created_book.id
         }
 
@@ -90,12 +100,29 @@ class BookSearchAPIView(generics.ListAPIView):
     serializer_class = BookSerializer
 
     def get_queryset(self):
-        query = self.request.data.get('query', '')  # Get the query from the request data
-        books = Book.objects.all()
+        query = self.kwargs.get('query')
+        query_length = len(query)
+        n = min(3, query_length)
+
+        books = Book.objects.exclude(status_book='pre-purchased').order_by('-id')
 
         # Vectorize book titles, subtitles, and genres
         vectorizer = TfidfVectorizer(stop_words='english')
-        X = vectorizer.fit_transform([f"{book.title} {book.subtitle} {book.genre.genre_name}" for book in books])
+
+        # Construct book descriptions, handling genre_name when genre is None
+        book_descriptions = []
+        for book in books:
+            title = book.title
+            subtitle = book.subtitle
+            if book.genre:
+                genre_name = book.genre.genre_name
+            else:
+                genre_name = ""
+            description = f"{title} {subtitle} {genre_name}"
+            book_descriptions.append(description)
+
+        # Fit-transform the vectorizer
+        X = vectorizer.fit_transform(book_descriptions)
         query_vec = vectorizer.transform([query])
 
         # Calculate cosine similarity between query vector and book vectors
@@ -120,18 +147,26 @@ class BookSearchAPIView(generics.ListAPIView):
             score = item['score']
             serialized_book = self.serializer_class(book).data
             serialized_book['score'] = score
-            serialized_book['genre'] = book.genre.genre_name
+
+            # Build absolute URL for book_img if it exists
+            if 'book_img' in serialized_book and serialized_book['book_img']:
+                book_img_url = request.build_absolute_uri(serialized_book['book_img'])
+                serialized_book['book_img'] = book_img_url
+
+            # Append the serialized book data to the list
             serialized_data.append(serialized_book)
 
+        # Return Response with the serialized data
         return Response(serialized_data, status=status.HTTP_200_OK)
-
+    
 class BookUpdateAPIView(generics.UpdateAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = BookSerializer
 
     def get_object(self):
-        book_id = self.kwargs.get('pk')
+        book_id = self.request.data.get('id')
+        # print("this is my ID: ", book_id)
         book = Book.objects.get(pk=book_id)
         return book
 
@@ -147,7 +182,7 @@ class BookUpdateAPIView(generics.UpdateAPIView):
         updated_data = serializer.validated_data
 
         book_img_url = None
-        if updated_data["book_img"]:
+        if updated_data.get("book_img"):
             book_img_url = request.build_absolute_uri(updated_data["book_img"])
 
         # Construct the payload with updated book information
@@ -195,5 +230,62 @@ class BookDeleteAPIView(generics.DestroyAPIView):
 
 class GetGenreAPIView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
-    queryset = Genre.objects.all()
+    # queryset = Genre.objects.all()
     serializer_class = GenreSerializer
+
+    def get(self, request, *args, **kwargs):
+        queryset = Genre.objects.all()
+        serializer = self.serializer_class(queryset, many=True)
+
+        payload = []
+
+        for genre_data in serializer.data:
+            genre_info = {
+                'id': genre_data['id'],
+                'genre_name': genre_data['genre_name'],
+            }
+            payload.append(genre_info)
+        return Response(payload, status=status.HTTP_200_OK)
+
+class GenreCreateView(generics.CreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    serializer_class = GenreSerializer
+
+class BookExploreAPIView(generics.ListAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    serializer_class = BookSerializer
+
+    def get(self, request, *args, **kwargs):
+        # Retrieve queryset for books associated with the authenticated user
+        book = Book.objects.exclude(status_book='pre-purchased').order_by('-id')
+        # books = Book.objects.all()
+
+        # Serialize the queryset
+        serializer = self.serializer_class(book, many=True)
+
+        # Extract book image URL for each book
+        payload = []
+        for book_data in serializer.data:
+            book_img_url = None
+            if book_data["book_img"]:
+                book_img_url = request.build_absolute_uri(book_data["book_img"])
+
+            # Construct book info dictionary including the book image URL
+            book_info = {
+                'id': book_data['id'],
+                'title': book_data['title'],
+                'author': book_data['author'],
+                'description': book_data['description'],
+                'price': book_data['price'],
+                'genre': book_data['genre'],
+                'book_img': book_img_url,
+                # Add other fields as needed
+            }
+            payload.append(book_info)
+
+        # Return the book details in the response payload
+        return Response(payload, status=status.HTTP_200_OK)

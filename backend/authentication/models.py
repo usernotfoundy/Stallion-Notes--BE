@@ -39,3 +39,4 @@ class Misc(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     genre_pref = models.CharField(max_length=255)
     author_pref = models.CharField(max_length=255)
+

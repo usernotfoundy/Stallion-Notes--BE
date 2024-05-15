@@ -138,53 +138,20 @@ class UpdateUserAPIView(generics.UpdateAPIView):
 
         # Retrieve the updated user instance
         updated_user = self.get_object()
+        
+        profile_img_url = None
+        if updated_user.profile_img:
+            profile_img_url = request.build_absolute_uri(updated_user.profile_img)
 
         # Construct the payload with updated user attributes
         payload = {
-            "First Name": updated_user.first_name,  # Get the updated first name
-            "Middle Name": updated_user.middle_name,  # Get the updated middle name
-            "Last Name": updated_user.last_name,  # Get the updated last name
-            "Email": updated_user.email,  # Get the updated email
+            "first_name": updated_user.first_name,  # Get the updated first name
+            "middle_name": updated_user.middle_name,  # Get the updated middle name
+            "last_name": updated_user.last_name,  # Get the updated last name
+            "email": updated_user.email,  # Get the updated email
+            "profile_img": profile_img_url,
             # "College": updated_user.course.college.college_name,  # Get the college name associated with the user's course
             # "Course": updated_user.course.course_name  # Get the course name associated with the user
-        }
-        
-        # Return the payload in the response with status 200 OK
-        return Response(payload, status=status.HTTP_200_OK)
-    
-class UpdateProfileIMG(generics.UpdateAPIView):
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [permissions.IsAuthenticated]
-
-    serializer_class = UserSerializer
-
-    def get_object(self):
-        # Get the authenticated user from the request
-        user = self.request.user
-        return user
-
-    def update(self, request, *args, **kwargs):
-        # Determine if the update should be partial or full
-        partial = kwargs.pop('partial', False)
-        
-        # Get the user instance to update
-        instance = self.get_object()
-        
-        # Create a serializer instance with the user instance and request data
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        
-        # Validate the serializer data
-        serializer.is_valid(raise_exception=True)
-        
-        # Perform the update
-        self.perform_update(serializer)
-
-        # Retrieve the updated user instance
-        updated_user = self.get_object()
-
-        # Construct the payload with updated profile_img
-        payload = {
-            "profile_img": updated_user.profile_img,  # Get the updated profile image path
         }
         
         # Return the payload in the response with status 200 OK

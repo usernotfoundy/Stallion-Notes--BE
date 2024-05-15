@@ -15,14 +15,16 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include, re_path
+from django.urls import path
 from authentication.views import *
 from book_management.views import *
 from cart_management.views import *
 from post_management.views import *
+from rating_management.views import *
+from purchase_management.views import *
 
 # for handling static files
-from django.conf import settings
+# from django.conf import Settings
 from django.conf.urls.static import static
 
 urlpatterns = [
@@ -46,15 +48,35 @@ urlpatterns = [
     path('create-book/', BookCreateView.as_view(), name='create-book'),
     path('update-book/', BookUpdateAPIView.as_view(), name='update-book'),
     path('delete-book/<int:pk>/', BookDeleteAPIView.as_view(), name='delete-book'),
-    path('search-book/', BookSearchAPIView.as_view(), name='search-book'),
-    path('get-genre/', GetGenreAPIView.as_view(), name='get-genre'),
+    path('search-book/<str:query>', BookSearchAPIView.as_view(), name='search-book'),
+    # path('get-genre/', GetGenreAPIView.as_view(), name='get-genre'),
+    path('explore-books/', BookExploreAPIView.as_view(), name='explore-books'),
 
     # Cart Management APIs
     path('add-cart/', AddCartAPIView.as_view(), name='add-cart'),
     path('view-cart/', CartViewAPIView.as_view(), name='view-cart'),
+    path('delete-cart/<int:pk>/', CartDeleteAPIView.as_view(), name='delete-cart'),
 
     # Post Management APIs
     path('view-posts/', PostAPIView.as_view(), name='view-posts'),
+    path('add-wishlist/', AddWishlistAPIView.as_view(), name='add-wishlist'),
+    path('create-wishlist/', CreateWishlistAPIView.as_view(), name='create-wishlist'),
+    path('view-wishlist/', WishlistAPIView.as_view(), name='view-wishlist'),
+    path('delete-wishlist/<int:pk>/', DeleteWishlistAPIView.as_view(), name='delete-wishlist'),
+
+    #Rating Management APIs
+    path('rate-app/', RatingCreateView.as_view(), name='rate-app'),
+    path('view-ratings/', RatingAPIView.as_view(), name='view-ratings'),
+
+    #Purchase Management APIs
+    path('purchase-book/', PurchaseCreateAPIView.as_view(), name='purchase-book'),
+    path('view-purchase/', PurchaseListAPIView.as_view(), name='view-purchase'),
+    path('update-purchased-book/', UpdatePurchasedBookAPIView.as_view(), name='update-purchased-book'),
+
+    #Genre Management APIs
+    path('create-genre/', GenreCreateView.as_view(), name='create-genre'),
+    path('view-genre/', GetGenreAPIView.as_view(), name='get-genre'),
+    
 ]
 
 # Serve media files during development
