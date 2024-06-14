@@ -2,10 +2,10 @@ from rest_framework import serializers
 from .models import *
 from authentication.serializer import UserSerializer
 
-class AuthorSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Author
-        fields = ['first_name','middle_name','last_name']
+# class AuthorSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Author
+#         fields = ['first_name','middle_name','last_name']
 
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,7 +13,7 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class BookSerializer(serializers.ModelSerializer):
-    author = AuthorSerializer(required=False)
+    # author = AuthorSerializer(required=False)
     genre = GenreSerializer(required=False)
     user = serializers.HiddenField(default=serializers.CurrentUserDefault())
 

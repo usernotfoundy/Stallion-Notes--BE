@@ -19,6 +19,27 @@ from sklearn.metrics.pairwise import cosine_similarity
 from django.conf import settings
 from django.http import Http404
 
+import re
+from fuzzywuzzy import process
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.stem import PorterStemmer
+from nltk.tokenize import word_tokenize
+import nltk
+from django.db.models import Q
+
+# Download NLTK resources if not already done
+# nltk.download('punkt')
+
+class StemmedTfidfVectorizer(TfidfVectorizer):
+    def __init__(self, stemmer=None, **kwargs):
+        super(StemmedTfidfVectorizer, self).__init__(**kwargs)
+        self.stemmer = stemmer or PorterStemmer()
+
+    def build_analyzer(self):
+        analyzer = super(StemmedTfidfVectorizer, self).build_analyzer()
+        return lambda doc: (self.stemmer.stem(w) for w in analyzer(doc))
+
 class BookAPIView(generics.ListAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [permissions.IsAuthenticated]
@@ -69,31 +90,46 @@ class BookAPIView(generics.ListAPIView):
 class BookCreateView(generics.CreateAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [permissions.IsAuthenticated]
-
     serializer_class = BookSerializer
-
-    def perform_create(self, serializer):
-        # Set the user field of the book instance to the logged-in user
-        serializer.save(user=self.request.user)     
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+    
+        if serializer.is_valid():
+            try:
+                # Extract genre_id from request data
+                genre_id = request.data.get('genre')
 
-        # Get the created book instance
-        created_book = serializer.instance
-        genre_id = self.request.data.get('genre')
-        genre = Genre.objects.get(id=genre_id)
+                # Get user from request (assuming authentication is setup)
+                user = self.request.user
 
-        # Construct the payload with the created book ID and a success message
-        payload = {
-            "message": "Book created successfully",
-            "genre": genre.genre_name,
-            "id": created_book.id
-        }
+                # Create a new Book object
+                book = Book.objects.create(
+                    user=user,
+                    title=request.data.get('title'),
+                    subtitle=request.data.get('subtitle'),
+                    # isbn=request.data.get('isbn'),
+                    # publisher=request.data.get('publisher'),
+                    description=request.data.get('description'),
+                    # status_book=request.data.get('status_book'),
+                    price=request.data.get('price'),
+                    author=request.data.get('author'),
+                    genre_id=genre_id,
+                    book_img=request.data.get('book_img'),
+                    # wishlist=request.data.get('wishlist')
+                )
 
-        return Response(payload, status=status.HTTP_201_CREATED)
+                # Serialize the created Book object
+                serialized_data = BookSerializer(book).data
+
+                # Return success response
+                return Response(serialized_data, status=status.HTTP_201_CREATED)
+
+            except Genre.DoesNotExist:
+                return Response({"error": "Genre not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # If serializer is not valid, return error response
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class BookSearchAPIView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
@@ -101,62 +137,43 @@ class BookSearchAPIView(generics.ListAPIView):
 
     def get_queryset(self):
         query = self.kwargs.get('query')
-        query_length = len(query)
-        n = min(3, query_length)
+        if not query:
+            return []
+
+        # Use the stemmer with TF-IDF
+        vectorizer = StemmedTfidfVectorizer(stop_words='english')
 
         books = Book.objects.exclude(status_book='pre-purchased').order_by('-id')
+        book_descriptions = [
+            f"{book.title} {book.subtitle if book.subtitle else ''} {book.genre.genre_name if book.genre else ''}"
+            for book in books
+        ]
 
-        # Vectorize book titles, subtitles, and genres
-        vectorizer = TfidfVectorizer(stop_words='english')
-
-        # Construct book descriptions, handling genre_name when genre is None
-        book_descriptions = []
-        for book in books:
-            title = book.title
-            subtitle = book.subtitle
-            if book.genre:
-                genre_name = book.genre.genre_name
-            else:
-                genre_name = ""
-            description = f"{title} {subtitle} {genre_name}"
-            book_descriptions.append(description)
-
-        # Fit-transform the vectorizer
+        # Create the matrix of book descriptions
         X = vectorizer.fit_transform(book_descriptions)
         query_vec = vectorizer.transform([query])
+        similarities = cosine_similarity(X, query_vec).flatten()
 
-        # Calculate cosine similarity between query vector and book vectors
-        similarities = cosine_similarity(X, query_vec)
+        # Filter books by similarity score
+        books_with_scores = sorted(
+            [(book, score) for book, score in zip(books, similarities)],
+            key=lambda x: x[1],
+            reverse=True
+        )
 
-        # Sort books by similarity score
-        books_with_scores = list(zip(books, similarities))
-        sorted_books = sorted(books_with_scores, key=lambda x: x[1], reverse=True)
-
-        # Return list of books sorted by score
-        return sorted_books
+        return [book for book, score in books_with_scores if score > 0.01]
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        # Extract Book objects and scores from tuples in the queryset
-        books_with_scores = [{'book': book[0], 'score': book[1][0]} for book in queryset]
-
-        # Serialize book data along with genre and score
         serialized_data = []
-        for item in books_with_scores:
-            book = item['book']
-            score = item['score']
-            serialized_book = self.serializer_class(book).data
-            serialized_book['score'] = score
 
-            # Build absolute URL for book_img if it exists
+        for book in queryset:
+            serialized_book = self.serializer_class(book).data
             if 'book_img' in serialized_book and serialized_book['book_img']:
                 book_img_url = request.build_absolute_uri(serialized_book['book_img'])
                 serialized_book['book_img'] = book_img_url
-
-            # Append the serialized book data to the list
             serialized_data.append(serialized_book)
 
-        # Return Response with the serialized data
         return Response(serialized_data, status=status.HTTP_200_OK)
     
 class BookUpdateAPIView(generics.UpdateAPIView):
@@ -261,27 +278,34 @@ class BookExploreAPIView(generics.ListAPIView):
 
     def get(self, request, *args, **kwargs):
         # Retrieve queryset for books associated with the authenticated user
-        book = Book.objects.exclude(status_book='pre-purchased').order_by('-id')
+        books = Book.objects.exclude(Q(status_book='pre-purchased') | Q(status_book='purchased')).order_by('-id')
         # books = Book.objects.all()
 
         # Serialize the queryset
-        serializer = self.serializer_class(book, many=True)
+        # serializer = self.serializer_class(book, many=True)
 
         # Extract book image URL for each book
         payload = []
-        for book_data in serializer.data:
+        for book_data in books:
             book_img_url = None
-            if book_data["book_img"]:
-                book_img_url = request.build_absolute_uri(book_data["book_img"])
+            if book_data.book_img:
+                book_img_url = request.build_absolute_uri(book_data.book_img.url)
+            
+            genre_name = None
+            if book_data.genre:
+                genre_name = book_data.genre.genre_name
+            else:
+                genre_name = "Null"
 
             # Construct book info dictionary including the book image URL
             book_info = {
-                'id': book_data['id'],
-                'title': book_data['title'],
-                'author': book_data['author'],
-                'description': book_data['description'],
-                'price': book_data['price'],
-                'genre': book_data['genre'],
+                'id': book_data.id,
+                'seller': book_data.user.username,
+                'title': book_data.title,
+                'author': book_data.author,
+                'description': book_data.description,
+                'price': book_data.price,
+                'genre': genre_name,
                 'book_img': book_img_url,
                 # Add other fields as needed
             }

@@ -22,6 +22,7 @@ from cart_management.views import *
 from post_management.views import *
 from rating_management.views import *
 from purchase_management.views import *
+from admin_management.views import *
 
 # for handling static files
 # from django.conf import Settings
@@ -31,11 +32,11 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # Authentication APIs
-    path('view-users/', ViewUsersAPIView.as_view(), name='view-user'),
     path('register/', RegistrationAPIView.as_view(), name='register'),
     path('login/', LoginAPIView.as_view(), name='login'),
     path('update-user/', UpdateUserAPIView.as_view(), name='update-user'),
     path('view-profile/', ViewProfileAPIView.as_view(), name='view-profile'),
+    path('create-genre-pref/', CreateGenrePrefAPIView.as_view(), name='create-genre-pref'),
 
     # College & Course APIs
     path('create-college/', CollegeCreateView.as_view(), name='create-college'),
@@ -76,6 +77,18 @@ urlpatterns = [
     #Genre Management APIs
     path('create-genre/', GenreCreateView.as_view(), name='create-genre'),
     path('view-genre/', GetGenreAPIView.as_view(), name='get-genre'),
+
+    #Admin Management APIs
+    path('view-users/', ViewUsersAPIView.as_view(), name='view-user'),
+    path('view-transactions/', ViewTransaction.as_view(), name='view-transactions'),
+    path('approve-transaction/', ApproveTransaction.as_view(), name='approve-transaction'),
+    path('view-data-stats/', DataStatisticsAPIView.as_view(), name='view-data-stats'),
+    path('gayson-donatenen/', CreateDonorAPIView.as_view(), name='gayson-donatenen'),
+    path('to-verify-list/', ToVerifyUserAPIView.as_view(), name='to-verify-list'),
+    path('verify-user/', VerifyUserAPIView.as_view(), name='verify-user'),
+    path('decline-transaction/<int:pk>/', DeclineTransaction.as_view(), name='decline-transaction'),
+    path('change-password/', UpdateTargetUser.as_view(), name='change-password'),
+
     
 ]
 

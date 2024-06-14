@@ -10,6 +10,17 @@ class UserManager(BaseUserManager):
         user.set_password(password)
         user.save(using=self._db)
         return user
+
+    def create_superuser(self, username, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self.create_user(username, password, **extra_fields)
     
 class College(models.Model):
     college_name = models.CharField(max_length=128)
@@ -30,13 +41,21 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(max_length=20)
     profile_img = models.ImageField(upload_to='profile', blank=True, null=True)
     course = models.ForeignKey(Course, on_delete=models.DO_NOTHING, null=True, blank=True)
-    
+    is_staff = models.BooleanField(default=False)  # Define is_staff field
+    is_superuser = models.BooleanField(default=False)  # Define is_superuser field
+    is_verified = models.BooleanField(default=False)
+    is_flag = models.BooleanField(default=False)
+
     objects = UserManager()
 
     USERNAME_FIELD = 'username'
 
+    @property
+    def is_admin(self):
+        return self.is_staff and self.is_superuser
+
 class Misc(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     genre_pref = models.CharField(max_length=255)
-    author_pref = models.CharField(max_length=255)
+    # author_pref = models.CharField(max_length=255)
 

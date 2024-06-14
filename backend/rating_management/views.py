@@ -9,7 +9,9 @@ from rest_framework import status
 from rest_framework.authtoken.views import ObtainAuthToken
 from .models import *
 from authentication.models import *
+from book_management.models import *
 from .serializer import *
+from book_management.serializer import *
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import IsAuthenticated
@@ -26,8 +28,8 @@ class RatingCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         rating = serializer.validated_data.get('rating', 5)  # Default rating is set to 5
-        if rating < 3:
-            rating = 3  # Minimum rating is set to 3
+        # if rating < 3:
+        #     rating = 3  # Minimum rating is set to 3
         serializer.save(rating=rating)
 
     def create(self, request, *args, **kwargs):
@@ -59,6 +61,7 @@ class RatingAPIView(generics.ListAPIView):
         for rating in ratings:
             # Construct the payload for each rating
             rating_data = {
+                'id': rating.id,
                 'user': rating.user.username,
                 'ratings': rating.rating,
                 'comment': rating.comment,
@@ -68,4 +71,39 @@ class RatingAPIView(generics.ListAPIView):
 
         # Return the payload as a JSON response
         return Response(payload, status=status.HTTP_200_OK)
+    
+class AddWishlistAPIView(generics.UpdateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = BookSerializer
 
+    def get_object(self):
+        book_id = self.request.data.get('book_id')
+        book = Book.objects.get(pk=book_id)
+        return book
+    
+    def update(self, request, *args, **kwargs):
+        book_id = request.data.get('book_id')
+        action = request.data.get('action')  # Get the action from request data
+        
+        if action not in ['like', 'unlike']:
+            return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
+
+        instance = self.get_object()
+
+        if action == 'like':
+            instance.wishlist += 1
+        elif action == 'unlike':
+            instance.wishlist -= 1
+            if instance.wishlist < 0:
+                instance.wishlist = 0
+
+        instance.save()
+
+        # Prepare response payload
+        payload = {
+            "message": f"Book '{instance.title}' wishlist count updated",
+            "wishlist_count": instance.wishlist,
+        }
+
+        return Response(payload, status=status.HTTP_200_OK)

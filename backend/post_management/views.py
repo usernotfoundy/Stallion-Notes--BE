@@ -21,7 +21,7 @@ from book_management.models import *
 from book_management.serializer import *
 from book_management.views import *
 from django.shortcuts import get_object_or_404
-# from authentication.serializer import MiscSerializer
+from django.db.models import Q
 
 class PostAPIView(generics.ListAPIView):
     authentication_classes = [TokenAuthentication]  
@@ -29,11 +29,16 @@ class PostAPIView(generics.ListAPIView):
     serializer_class = BookSerializer
 
     def list(self, request, *args, **kwargs):
+        login_user = self.request.user
+
+        current_user = User.objects.get(username=login_user)
         # Retrieve all book posts
         # book_posts = Book.objects.all()
 
         # Retrieve all book posts in reverse order
-        book_posts = Book.objects.exclude(status_book='pre-purchased').order_by('-id')
+
+        book_posts = Book.objects.exclude(Q(status_book='pre-purchased') | Q(status_book='purchased')).order_by('-id')
+
 
         # Initialize an empty list to store the payload
         payload = []
@@ -50,18 +55,29 @@ class PostAPIView(generics.ListAPIView):
             if book_post.user.profile_img:
                 user_img_url = request.build_absolute_uri(book_post.user.profile_img.url)
 
+            genre_name = None
+            if book_post.genre:
+                genre_name = book_post.genre.genre_name
+            else:
+                genre_name = "Null"
+
+            # print("genre: ", genre_name)
+
             # Create a dictionary for the book post payload
             post_data = {
                 'id': book_post.id,
                 'title': book_post.title,
+                'author': book_post.author,
+                'genre': genre_name,
                 'subtitle': book_post.subtitle,
                 'description':book_post.description,
                 'price': book_post.price,
                 'created_at': book_post.created_at,
                 'book_img_url': book_img_url,
                 'wishlist': book_post.wishlist,
+                'seller': book_post.user.username,
                 'user': {
-                    'username': book_post.user.username,
+                    'username': current_user.username,
                     # 'email': book_post.user.email,
                     'profile_img_url': user_img_url,  # Include user's profile image URL
                     # Add other user-related fields as needed
@@ -95,82 +111,42 @@ class PostAPIView(generics.ListAPIView):
         
 #         # If no genre_pref is found for the user or it's empty, return an empty queryset
 #         return []
-
-class PostSearchAPIView(generics.ListAPIView):
-    permission_classes = [permissions.AllowAny]
-    serializer_class = BookSerializer
-
-    def get_queryset(self):
-        query = self.request.data.get('query', '')  # Get the query from the request data
-        books = Book.objects.all()
-
-        # Vectorize book titles, subtitles, and genres
-        vectorizer = TfidfVectorizer(stop_words='english')
-        X = vectorizer.fit_transform([f"{book.title} {book.subtitle} {book.genre.genre_name}" for book in books])
-        query_vec = vectorizer.transform([query])
-
-        # Calculate cosine similarity between query vector and book vectors
-        similarities = cosine_similarity(X, query_vec)
-
-        # Sort books by similarity score
-        books_with_scores = list(zip(books, similarities))
-        sorted_books = sorted(books_with_scores, key=lambda x: x[1], reverse=True)
-
-        # Return list of books sorted by score
-        return sorted_books
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        # Extract Book objects and scores from tuples in the queryset
-        books_with_scores = [{'book': book[0], 'score': book[1][0]} for book in queryset]
-        
-        # Serialize book data along with genre and score
-        serialized_data = []
-        for item in books_with_scores:
-            book = item['book']
-            score = item['score']
-            serialized_book = self.serializer_class(book).data
-            serialized_book['score'] = score
-            serialized_book['genre'] = book.genre.genre_name
-            serialized_data.append(serialized_book)
-
-        return Response(serialized_data, status=status.HTTP_200_OK)
     
-class AddWishlistAPIView(generics.UpdateAPIView):
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
-    serializer_class = BookSerializer
+# class AddWishlistAPIView(generics.UpdateAPIView):
+#     authentication_classes = [TokenAuthentication]
+#     permission_classes = [IsAuthenticated]
+#     serializer_class = BookSerializer
 
-    def get_object(self):
-        book_id = self.request.data.get('book_id')
-        book = Book.objects.get(pk=book_id)
-        return book
+#     def get_object(self):
+#         book_id = self.request.data.get('book_id')
+#         book = Book.objects.get(pk=book_id)
+#         return book
     
-    def update(self, request, *args, **kwargs):
-        book_id = request.data.get('book_id')
-        action = request.data.get('action')  # Get the action from request data
+#     def update(self, request, *args, **kwargs):
+#         book_id = request.data.get('book_id')
+#         action = request.data.get('action')  # Get the action from request data
         
-        if action not in ['like', 'unlike']:
-            return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
+#         if action not in ['like', 'unlike']:
+#             return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
 
-        instance = self.get_object()
+#         instance = self.get_object()
 
-        if action == 'like':
-            instance.wishlist += 1
-        elif action == 'unlike':
-            instance.wishlist -= 1
-            if instance.wishlist < 0:
-                instance.wishlist = 0
+#         if action == 'like':
+#             instance.wishlist += 1
+#         elif action == 'unlike':
+#             instance.wishlist -= 1
+#             if instance.wishlist < 0:
+#                 instance.wishlist = 0
 
-        instance.save()
+#         instance.save()
 
-        # Prepare response payload
-        payload = {
-            "message": f"Book '{instance.title}' wishlist count updated",
-            "wishlist_count": instance.wishlist,
-        }
+#         # Prepare response payload
+#         payload = {
+#             "message": f"Book '{instance.title}' wishlist count updated",
+#             "wishlist_count": instance.wishlist,
+#         }
 
-        return Response(payload, status=status.HTTP_200_OK)
+#         return Response(payload, status=status.HTTP_200_OK)
     
 class CreateWishlistAPIView(generics.CreateAPIView):
     serializer_class = MyWishlistSerializer
@@ -248,7 +224,6 @@ class WishlistAPIView(generics.ListAPIView):
             payload.append(post_data)
 
         return Response(payload, status=status.HTTP_200_OK)
-
 
 class DeleteWishlistAPIView(generics.DestroyAPIView):
     authentication_classes = [TokenAuthentication]

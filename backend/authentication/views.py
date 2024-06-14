@@ -33,11 +33,6 @@ class TokenAuthentication(BaseAuthentication):
         else:
             return None
 
-class ViewUsersAPIView(generics.ListAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [permissions.AllowAny]
-
 class RegistrationAPIView(generics.CreateAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]
@@ -62,6 +57,8 @@ class LoginAPIView(ObtainAuthToken):
                     'first name': user.first_name,
                     'middle name': user.middle_name,
                     'last name': user.last_name,
+                    'is_superuser': user.is_superuser,
+                    'is_staff': user.is_staff,
                 },
                 'token': token.key,
             }
@@ -98,6 +95,9 @@ class ViewProfileAPIView(generics.ListAPIView):
         profile_img_url = None
         if user_data["profile_img"]:
             profile_img_url = request.build_absolute_uri(user_data["profile_img"])
+        
+        course_id = user_data["course"]
+        course = Course.objects.get(pk=course_id) 
 
         payload = {
             "username": user_data["username"],
@@ -107,6 +107,11 @@ class ViewProfileAPIView(generics.ListAPIView):
             "email": user_data["email"],
             "profile_img": profile_img_url,
             "phone_number": user_data["phone_number"],
+            "college": course.college.college_abbr,
+            "is_staff": user_data["is_staff"],
+            "is_superuser": user_data["is_superuser"],
+            "is_verified": user_data["is_verified"],
+            "is_flag": user_data["is_flag"],
         }
         return Response(payload, status=status.HTTP_200_OK)
     
@@ -176,7 +181,6 @@ class CollegeView(generics.ListAPIView):
     serializer_class = CollegeSerializer
     queryset = College.objects.all()
 
-    
 class CourseView(generics.ListAPIView):
     # authentication_classes = [TokenAuthentication]
     permission_classes = [permissions.AllowAny]
@@ -209,3 +213,53 @@ class CourseView(generics.ListAPIView):
         # print(payload)
 
         return Response(payload, status=status.HTTP_200_OK)
+
+class CreateGenrePrefAPIView(generics.CreateAPIView):
+    serializer_class = MiscSerializer
+    permission_classes = [permissions.AllowAny]  # Allow access to unauthenticated users
+
+    def create(self, request, *args, **kwargs):
+        # Extract user data from the request
+        user_data = {
+            'username': request.data.get('username'),
+            'password': request.data.get('password'),
+            'first_name': request.data.get('first_name'),
+            'middle_name': request.data.get('middle_name'),
+            'last_name': request.data.get('last_name'),
+            'email': request.data.get('email'),
+            'phone_number': request.data.get('phone_number'),
+            'profile_img': request.data.get('profile_img'),
+            'course': request.data.get('course')
+        }
+
+        # Serialize user data and validate
+        user_serializer = UserSerializer(data=user_data, context={'request': request})
+        if user_serializer.is_valid():
+            # Save the user
+            user = user_serializer.save()
+
+            # Retrieve the user instance based on the provided username
+            try:
+                user = User.objects.get(username=user_data['username'])
+            except User.DoesNotExist:
+                return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+            # Extract genre preferences from the request
+            genre_prefs_data = request.data.get('genre_prefs', [])
+
+            # Associate the retrieved user with each genre preference
+            genre_prefs_data = [{'user': user.id, 'genre_pref': genre_pref['genre_pref']} for genre_pref in genre_prefs_data]
+
+            # Serialize genre preferences data and validate
+            genre_prefs_serializer = MiscSerializer(data=genre_prefs_data, many=True, context={'request': request})
+            if genre_prefs_serializer.is_valid():
+                # Save genre preferences
+                genre_prefs_serializer.save()
+                return Response(genre_prefs_serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response(genre_prefs_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+

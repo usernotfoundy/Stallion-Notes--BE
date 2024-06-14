@@ -21,6 +21,7 @@ from django.conf import settings
 from django.http import Http404
 import hashlib
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 
 class PurchaseCreateAPIView(generics.CreateAPIView):
     authentication_classes = [TokenAuthentication]
@@ -68,7 +69,6 @@ class PurchaseCreateAPIView(generics.CreateAPIView):
             except User.DoesNotExist:
                 return Response({"error": "Seller not found."}, status=status.HTTP_404_NOT_FOUND)
 
-
 class UpdatePurchasedBookAPIView(generics.UpdateAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [permissions.IsAuthenticated]
@@ -100,7 +100,6 @@ class UpdatePurchasedBookAPIView(generics.UpdateAPIView):
         # Return success response with the updated book data
         return Response({'message': 'Book status updated successfully', 'book': serialized_book}, status=status.HTTP_200_OK)
 
-
 class PurchaseListAPIView(generics.ListAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [permissions.IsAuthenticated]
@@ -108,11 +107,24 @@ class PurchaseListAPIView(generics.ListAPIView):
     serializer_class = PurchaseSerializer
 
     def get_queryset(self):
-        return Purchase_History.objects.filter(user=self.request.user).order_by('-id')
-    
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset().select_related('seller', 'purchase_book')  # Optimize the query
+        queryset = Purchase_History.objects.filter(
+            user=self.request.user
+        ).exclude(
+            purchase_book__status_book='purchased'
+        ).order_by('-id')
+        
+        if not queryset.exists():
+            return None
+        
+        return queryset
 
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+    
+        if queryset is None:
+            return Response([], status=status.HTTP_200_OK)
+
+        queryset = queryset.select_related('seller', 'purchase_book')  # Optimize the query
         payload = []
 
         for purchase_history in queryset:
@@ -122,7 +134,9 @@ class PurchaseListAPIView(generics.ListAPIView):
                 'purchase_book': purchase_history.purchase_book.title,  # Get the book's title
                 'created_at': purchase_history.created_at,  # Ensure the field name matches the model field
                 'transaction_hash': purchase_history.transaction_hash,
+                'claim_hub': purchase_history.purchase_book.user.course.college.college_abbr + "-HUB",
             }
             payload.append(purchase)
+        # print(payload)
 
         return Response(payload, status=status.HTTP_200_OK)

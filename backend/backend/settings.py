@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'post_management',
     'rating_management',
     'purchase_management',
+    'admin_management',
 ]
 
 MIDDLEWARE = [

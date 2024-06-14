@@ -3,10 +3,10 @@ from django.utils import timezone
 from authentication.models import User
 
 # Create your models here.
-class Author(models.Model):
-    first_name = models.CharField(max_length=125)
-    middle_name = models.CharField(max_length=125)
-    last_name = models.CharField(max_length=125)
+# class Author(models.Model):
+#     first_name = models.CharField(max_length=125)
+#     middle_name = models.CharField(max_length=125)
+#     last_name = models.CharField(max_length=125)
 
 class Genre(models.Model):
     genre_name = models.CharField(max_length=125)
